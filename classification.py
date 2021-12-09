@@ -5,6 +5,8 @@ from sklearn.model_selection import train_test_split, ShuffleSplit, GridSearchCV
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import classification_report,confusion_matrix
+from sklearn.metrics import roc_curve, auc
+# fpr2, tpr2, threshold = roc_curve(y_test, clf.predict_proba(X_test)[:,1])
 import warnings 
 warnings.filterwarnings("ignore")
 
@@ -15,7 +17,7 @@ def loadAndClean():
     # Drop rows with no information
     df.dropna(how='all', inplace=True)
 
-    # Drop columns relative to classification, we will use them later
+    # Drop columns relative to classification
     class_data = df.loc[:, ['Class']]
     df.drop(['Class', '2015 PRICE VAR [%]'], inplace=True, axis=1)
 
@@ -46,7 +48,7 @@ def loadAndClean():
 
     # Find reasonable threshold for nan-values situation
     test_nan_level = 0.5
-    # print(df_nans.quantile(test_nan_level))
+    print(df_nans.quantile(test_nan_level))
     _, thresh_nan = df_nans.quantile(test_nan_level)
 
     # Find reasonable threshold for zero-values situation
@@ -87,14 +89,14 @@ def loadAndClean():
 def MultiLayerPerceptron(x,y):
     # remember to scale inputs between 0 to 1 ************
     x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2)
-    mlp = MLPClassifier(max_iter=5000, activation='relu')
+    mlp = MLPClassifier()
     # print(mlp)
     mlp.fit(x_train,y_train.values.ravel())
     y_predict_mlp = mlp.predict(x_test)
     print(confusion_matrix(y_test,y_predict_mlp))
     print()
-    print(classification_report(y_test,y_predict_mlp))
-    return 0
+    # print(classification_report(y_test,y_predict_mlp))
+    return classification_report(y_test,y_predict_mlp)
 
 def TunedMLP(x,y):
     cv = ShuffleSplit(n_splits=1, test_size=0.2, random_state=1)
@@ -153,6 +155,21 @@ def TunedMLP(x,y):
 #  Score:  1.0
 # Parameters:  {'activation': 'logistic', 'alpha': 0, 'hidden_layer_sizes': 5, 'learning_rate': 'invscaling', 'learning_rate_init': 0.0001, 'max_iter': 500, 'shuffle': False, 'solver': 'sgd'}
 
+    param_grid = {
+    'hidden_layer_sizes':[5,10,15,(5,5),(5,10),(100, )],
+    'activation': ['identity','logistic','tanh','relu'],
+    'solver': ['lbfgs','sgd','adam'],
+    'alpha':[0.001,0.05],
+    'learning_rate':['invscaling','constant','adaptive'],
+    'learning_rate_init': [0.01,1.01,0.0001],
+    'max_iter': [100,500,1000]
+    }
+
+    gridSearch = GridSearchCV(MLPClassifier(), param_grid, cv=5,verbose=1,n_jobs=-1,scoring='accuracy')
+
+    gridSearch.fit(x_train, y_train.values.ravel())
+    print('Score: ', gridSearch.best_score_)
+    print('Parameters: ', gridSearch.best_params_)
     X_train_s, X_tune, y_train_s, y_tune = train_test_split(x_train, y_train,test_size=0.2)
     # for i in range(15):
     #     mlp = MLPClassifier(hidden_layer_sizes=5,activation='logistic',learning_rate_init=0.0001,
@@ -164,21 +181,21 @@ def TunedMLP(x,y):
     #     print(classification_report(y_tune,y_predict_mlp))
     #     # i = 10 or 14
         
-    mlp = MLPClassifier(hidden_layer_sizes=5,activation='logistic',learning_rate_init=0.0001,
-                        learning_rate='invscaling', solver='sgd', max_iter = 5000, shuffle = False,
-                        random_state=14)
+    # mlp = MLPClassifier(hidden_layer_sizes=5,activation='logistic',learning_rate_init=0.0001,
+    #                     learning_rate='invscaling', solver='sgd', max_iter = 5000, shuffle = False,
+    #                     random_state=14)
     
         
-    mlp.fit(x_train, y_train.values.ravel())
-    y_predict_mlp = mlp.predict(x_test)
-    print(classification_report(y_test,y_predict_mlp))
-    return 0
+    # mlp.fit(x_train, y_train.values.ravel())
+    # y_predict_mlp = mlp.predict(x_test)
+    # return classification_report(y_test,y_predict_mlp)
 
 def main():
     x,y = loadAndClean()
-    out = MultiLayerPerceptron(x,y)
-    out = TunedMLP(x,y)
-
+    # MLPreport = MultiLayerPerceptron(x,y)
+    # print(MLPreport)
+    TunedMLPreport = TunedMLP(x,y)
+    print(TunedMLPreport)
 
 
 if __name__=='__main__': 
